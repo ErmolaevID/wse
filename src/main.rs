@@ -1,34 +1,27 @@
-use std::{net::{TcpListener, TcpStream}, io::{BufReader, BufRead}, fs};
-
+use std::{net::{TcpListener, TcpStream}, io::{BufReader, BufRead, Write}, fs};
 use clap::Parser;
 use regex::Regex;
 use walkdir::{WalkDir, DirEntry};
 
 #[derive(Parser)]
 struct CliArgs {
-    path: std::path::PathBuf,
-
-}
-
-enum Message {
-	Move(i32),
-	Write(String),
+    path: Option<std::path::PathBuf>,
+    port: Option<i16>,
 }
 
 fn main() {
-    // let args = CliArgs::parse();
-    // start_server();
-
-    let mut v = Message::Move(2);
-
-	match v {
-		Message::Move(msg) => println!("{}", msg),
-		Message::Write(_) => println!("OK"),
-	}
+    let args = CliArgs::parse();
+    start_server(args);
 }
 
-fn start_server() {
-    let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
+fn start_server(args: CliArgs) {
+    let port = if args.port.is_some() {
+        args.port.unwrap().to_string()
+    } else {
+        String::from("7878")
+    };
+
+    let listener = TcpListener::bind(format!("127.0.0.1:{port}")).unwrap();
 
     for stream in listener.incoming() {
         let stream = stream.unwrap();
@@ -38,27 +31,33 @@ fn start_server() {
 }
 
 fn handle_connection(mut stream: TcpStream) {
-    let buf_reader = BufReader::new(&mut stream);
-    let http_request: Vec<_> = buf_reader
+    let buf_reader = BufReader::new(&stream);
+    let http_request: Vec<String> = buf_reader
         .lines()
         .map(|result| result.unwrap())
         .take_while(|line| !line.is_empty())
         .collect();
 
-    let re = Regex::new(r"^GET (.*)[ ].*").unwrap();
+    let get_request_regexp = Regex::new(r"^GET (.*)[ ].*").unwrap();
 
-    let req_url = re.captures(&http_request[0]).unwrap().get(1).unwrap().as_str();
+    let req_url = rem_first(get_request_regexp.captures(&http_request[0]).unwrap().get(1).unwrap().as_str());
     
-    let req_url_without_first = rem_first(req_url);
-
-    println!("{:#?}", all_paths_walkdir());
     let paths = all_paths_walkdir();
 
-    println!("Request: {:#?}", req_url);
-    if paths.contains(&String::from(req_url_without_first)) {
-        println!("Found file");
+    if paths.contains(&String::from(req_url)) {
+
+        let status_line = "HTTP/1.1 200 OK";
+        let body_content = fs::read_to_string(format!("./{req_url}")).unwrap();
+        let length = body_content.len();   
+        let response = format!("{status_line}\r\nContent-Length: {length}\r\nContent-Type: application/toml\r\n\r\n{body_content}");
+        stream.write_all(response.as_bytes()).unwrap();
+
     } else {
-        println!("Not found file");
+        let status_line = "HTTP/1.1 404 Not Found";
+        let body_content = fs::read_to_string("./pages/404.html").unwrap();
+        let length = body_content.len();   
+        let response = format!("{status_line}\r\nContent-Length: {length}\r\nContent-Type: text/html\r\n\r\n{body_content}");
+        stream.write_all(response.as_bytes()).unwrap();
     }
 }
 
