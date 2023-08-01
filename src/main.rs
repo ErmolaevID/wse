@@ -6,10 +6,11 @@ use std::{
     net::{TcpListener, TcpStream},
 };
 use walkdir::{DirEntry, WalkDir};
+use mime_guess;
 
 #[derive(Parser)]
 struct CliArgs {
-    path: std::path::PathBuf,
+    path: Option<std::path::PathBuf>,
     port: Option<i16>,
 }
 
@@ -56,17 +57,9 @@ fn handle_connection(mut stream: TcpStream) {
     let paths = all_paths_walkdir();
 
     if paths.contains(&String::from(req_url)) {
-        let status_line = "HTTP/1.1 200 OK";
-        let body_content = fs::read_to_string(format!("./{req_url}")).unwrap();
-        let length = body_content.len();
-        let response = format!("{status_line}\r\nContent-Length: {length}\r\nContent-Type: application/toml\r\n\r\n{body_content}");
-        stream.write_all(response.as_bytes()).unwrap();
+        handle_exist_file(req_url, stream);
     } else {
-        let status_line = "HTTP/1.1 404 Not Found";
-        let body_content = fs::read_to_string("./pages/404.html").unwrap();
-        let length = body_content.len();
-        let response = format!("{status_line}\r\nContent-Length: {length}\r\nContent-Type: text/html\r\n\r\n{body_content}");
-        stream.write_all(response.as_bytes()).unwrap();
+        handle_not_exist_file(stream);
     }
 }
 
@@ -94,4 +87,22 @@ fn rem_first(value: &str) -> &str {
     let mut chars = value.chars();
     chars.next();
     chars.as_str()
+}
+
+fn handle_exist_file(file_path: &str, mut stream: TcpStream) {
+    let status_line = "HTTP/1.1 200 OK";
+    let guess = mime_guess::from_path(&file_path);
+    let mime = guess.first().unwrap().to_string();
+    let body_content = fs::read_to_string(format!("./{file_path}")).unwrap();
+    let length = body_content.len();
+    let response = format!("{status_line}\r\nContent-Length: {length}\r\nContent-Type: {mime}\r\n\r\n{body_content}");
+    stream.write_all(response.as_bytes()).unwrap();
+}
+
+fn handle_not_exist_file(mut stream: TcpStream) {
+    let status_line = "HTTP/1.1 404 Not Found";
+    let body_content = fs::read_to_string("./pages/404.html").unwrap();
+    let length = body_content.len();
+    let response = format!("{status_line}\r\nContent-Length: {length}\r\nContent-Type: text/html\r\n\r\n{body_content}");
+    stream.write_all(response.as_bytes()).unwrap();
 }
