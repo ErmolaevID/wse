@@ -35,7 +35,7 @@ fn start_server(args: CliArgs) {
     }
 }
 
-fn handle_connection(mut stream: TcpStream) {
+fn handle_connection(stream: TcpStream) {
     let buf_reader = BufReader::new(&stream);
     let http_request: Vec<String> = buf_reader
         .lines()
@@ -101,8 +101,9 @@ fn handle_exist_file(file_path: &str, mut stream: TcpStream) {
 
 fn handle_not_exist_file(mut stream: TcpStream) {
     let status_line = "HTTP/1.1 404 Not Found";
-    let body_content = fs::read_to_string("./pages/404.html").unwrap();
+    let body_content: &'static [u8] = include_bytes!("../pages/404.html");
+    let str_body_content = String::from_utf8_lossy(body_content);
     let length = body_content.len();
-    let response = format!("{status_line}\r\nContent-Length: {length}\r\nContent-Type: text/html\r\n\r\n{body_content}");
+    let response = format!("{status_line}\r\nContent-Length: {length}\r\nContent-Type: text/html\r\n\r\n{str_body_content}");
     stream.write_all(response.as_bytes()).unwrap();
 }
