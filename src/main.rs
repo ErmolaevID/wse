@@ -50,21 +50,18 @@ fn handle_connection(stream: TcpStream) {
 
     let get_request_regexp = Regex::new(r"^GET (.*)[ ].*").unwrap();
 
-    let req_url = rem_first(
-        get_request_regexp
-            .captures(&http_request[0])
-            .unwrap()
-            .get(1)
-            .unwrap()
-            .as_str(),
-    );
+    if let Some(x) = get_request_regexp.captures(&http_request[0]) {
+        let req_url = rem_first(x.get(1).unwrap().as_str());
 
-    let paths = all_paths_walkdir();
+        let paths = all_paths_walkdir();
 
-    if paths.contains(&String::from(req_url)) {
-        handle_exist_file(req_url, stream);
+        if paths.contains(&String::from(req_url)) {
+            handle_exist_file(req_url, stream);
+        } else {
+            handle_not_exist_file(stream);
+        }
     } else {
-        handle_not_exist_file(stream);
+        handle_not_get_request(stream);
     }
 }
 
@@ -124,6 +121,15 @@ fn handle_not_exist_file(mut stream: TcpStream) {
 fn handle_not_guessed_file(mut stream: TcpStream) {
     let status_line = "HTTP/1.1 400 Bad Request";
     let body_content: &'static [u8] = include_bytes!("../pages/mime.html");
+    let str_body_content = String::from_utf8_lossy(body_content);
+    let length = body_content.len();
+    let response = format!("{status_line}\r\nContent-Length: {length}\r\nContent-Type: text/html\r\n\r\n{str_body_content}");
+    stream.write_all(response.as_bytes()).unwrap();
+}
+
+fn handle_not_get_request(mut stream: TcpStream) {
+    let status_line = "HTTP/1.1 400 Bad Request";
+    let body_content: &'static [u8] = include_bytes!("../pages/not-get.html");
     let str_body_content = String::from_utf8_lossy(body_content);
     let length = body_content.len();
     let response = format!("{status_line}\r\nContent-Length: {length}\r\nContent-Type: text/html\r\n\r\n{str_body_content}");
