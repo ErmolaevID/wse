@@ -9,6 +9,30 @@ use std::{
 };
 use walkdir::{DirEntry, WalkDir};
 
+const NOT_FOUND_HTML_FILE: &[u8; 272] = include_bytes!("../pages/404.html");
+const NOT_GET_REQUST_METHOD_HTML_FILE: &[u8; 243] = include_bytes!("../pages/not-get.html");
+const NOT_GUESSED_MIME_TYPE: &[u8; 323] = include_bytes!("../pages/mime.html");
+
+trait ResponseFiles {
+    fn not_found(&self) -> &[u8];
+    fn not_get_request_method(&self) -> &[u8];
+    fn not_guessed_mime_type(&self) -> &[u8];
+}
+
+struct HtmlResponseFiles {}
+
+impl ResponseFiles for HtmlResponseFiles {
+    fn not_found(&self) -> &[u8] {
+        return NOT_FOUND_HTML_FILE;
+    }
+    fn not_get_request_method(&self) -> &[u8] {
+        return NOT_GET_REQUST_METHOD_HTML_FILE;
+    }
+    fn not_guessed_mime_type(&self) -> &[u8] {
+        return NOT_GUESSED_MIME_TYPE;
+    }
+}
+
 #[derive(Parser)]
 struct CliArgs {
     // path: Option<std::path::PathBuf>,
@@ -58,10 +82,20 @@ fn handle_connection(stream: TcpStream) {
         if paths.contains(&String::from(req_url)) {
             handle_exist_file(req_url, stream);
         } else {
-            handle_not_exist_file(stream);
+            let html_response_files = HtmlResponseFiles {};
+            response_file(
+                stream,
+                "HTTP/1.1 404 Not Found".to_string(),
+                html_response_files.not_found(),
+            )
         }
     } else {
-        handle_not_get_request(stream);
+        let html_response_files = HtmlResponseFiles {};
+        response_file(
+            stream,
+            "HTTP/1.1 400 Bad Request".to_string(),
+            html_response_files.not_get_request_method(),
+        )
     }
 }
 
@@ -105,33 +139,18 @@ fn handle_exist_file(file_path: &str, mut stream: TcpStream) {
         );
         stream.write_all(response.as_bytes()).unwrap();
     } else {
-        handle_not_guessed_file(stream)
+        let html_response_files = HtmlResponseFiles {};
+        response_file(
+            stream,
+            "HTTP/1.1 400 Bad Request".to_string(),
+            html_response_files.not_guessed_mime_type(),
+        )
     }
 }
 
-fn handle_not_exist_file(mut stream: TcpStream) {
-    let status_line = "HTTP/1.1 404 Not Found";
-    let body_content: &'static [u8] = include_bytes!("../pages/404.html");
-    let str_body_content = String::from_utf8_lossy(body_content);
-    let length = body_content.len();
-    let response = format!("{status_line}\r\nContent-Length: {length}\r\nContent-Type: text/html\r\n\r\n{str_body_content}");
-    stream.write_all(response.as_bytes()).unwrap();
-}
-
-fn handle_not_guessed_file(mut stream: TcpStream) {
-    let status_line = "HTTP/1.1 400 Bad Request";
-    let body_content: &'static [u8] = include_bytes!("../pages/mime.html");
-    let str_body_content = String::from_utf8_lossy(body_content);
-    let length = body_content.len();
-    let response = format!("{status_line}\r\nContent-Length: {length}\r\nContent-Type: text/html\r\n\r\n{str_body_content}");
-    stream.write_all(response.as_bytes()).unwrap();
-}
-
-fn handle_not_get_request(mut stream: TcpStream) {
-    let status_line = "HTTP/1.1 400 Bad Request";
-    let body_content: &'static [u8] = include_bytes!("../pages/not-get.html");
-    let str_body_content = String::from_utf8_lossy(body_content);
-    let length = body_content.len();
+fn response_file(mut stream: TcpStream, status_line: String, file: &[u8]) {
+    let str_body_content = String::from_utf8_lossy(file);
+    let length = file.len();
     let response = format!("{status_line}\r\nContent-Length: {length}\r\nContent-Type: text/html\r\n\r\n{str_body_content}");
     stream.write_all(response.as_bytes()).unwrap();
 }
