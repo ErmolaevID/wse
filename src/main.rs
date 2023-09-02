@@ -1,37 +1,18 @@
+mod html_response_files;
+mod response_files;
+
 use clap::Parser;
+use html_response_files::HtmlResponseFiles;
 use log::info;
 use mime_guess;
 use regex::Regex;
+use response_files::ResponseFiles;
 use std::{
     fs,
     io::{BufRead, BufReader, Write},
     net::{TcpListener, TcpStream},
 };
 use walkdir::{DirEntry, WalkDir};
-
-const NOT_FOUND_HTML_FILE: &[u8; 272] = include_bytes!("../pages/404.html");
-const NOT_GET_REQUST_METHOD_HTML_FILE: &[u8; 243] = include_bytes!("../pages/not-get.html");
-const NOT_GUESSED_MIME_TYPE: &[u8; 323] = include_bytes!("../pages/mime.html");
-
-trait ResponseFiles {
-    fn not_found(&self) -> &[u8];
-    fn not_get_request_method(&self) -> &[u8];
-    fn not_guessed_mime_type(&self) -> &[u8];
-}
-
-struct HtmlResponseFiles {}
-
-impl ResponseFiles for HtmlResponseFiles {
-    fn not_found(&self) -> &[u8] {
-        return NOT_FOUND_HTML_FILE;
-    }
-    fn not_get_request_method(&self) -> &[u8] {
-        return NOT_GET_REQUST_METHOD_HTML_FILE;
-    }
-    fn not_guessed_mime_type(&self) -> &[u8] {
-        return NOT_GUESSED_MIME_TYPE;
-    }
-}
 
 #[derive(Parser)]
 struct CliArgs {
