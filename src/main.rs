@@ -28,11 +28,7 @@ fn main() {
 }
 
 fn start_server(args: CliArgs) {
-    let port = if args.port.is_some() {
-        args.port.unwrap().to_string()
-    } else {
-        String::from("7878")
-    };
+    let port = args.port.unwrap_or(7878).to_string();
 
     let listener = TcpListener::bind(format!("127.0.0.1:{port}")).unwrap();
 
