@@ -3,7 +3,7 @@ mod response_files;
 
 use clap::Parser;
 use html_response_files::HtmlResponseFiles;
-use log::info;
+use log::{info, log};
 use mime_guess;
 use regex::Regex;
 use response_files::ResponseFiles;
@@ -35,7 +35,7 @@ fn start_server(args: CliArgs) {
 
     let listener = TcpListener::bind(format!("127.0.0.1:{port}")).unwrap();
 
-    info!("Start server on 127.0.0.1:{}", port);
+    println!("Start server on 127.0.0.1:{}", port);
 
     for stream in listener.incoming() {
         let stream = stream.unwrap();
