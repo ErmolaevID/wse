@@ -12,11 +12,12 @@ use std::{
     io::{BufRead, BufReader, Write},
     net::{TcpListener, TcpStream},
 };
+use std::path::PathBuf;
 use walkdir::{DirEntry, WalkDir};
 
 #[derive(Parser)]
 struct CliArgs {
-    // path: Option<std::path::PathBuf>,
+    path: Option<PathBuf>,
     #[arg(short, long)]
     port: Option<i16>,
 }
@@ -30,6 +31,8 @@ fn main() {
 fn start_server(args: CliArgs) {
     let port = args.port.unwrap_or(7878).to_string();
 
+    let path = args.path.unwrap_or(PathBuf::from("./"));
+
     let listener = TcpListener::bind(format!("127.0.0.1:{port}")).unwrap();
 
     info!("Start server on 127.0.0.1:{}", port);
@@ -37,11 +40,11 @@ fn start_server(args: CliArgs) {
     for stream in listener.incoming() {
         let stream = stream.unwrap();
 
-        handle_connection(stream);
+        handle_connection(stream, path.to_str().unwrap_or("./"));
     }
 }
 
-fn handle_connection(stream: TcpStream) {
+fn handle_connection(stream: TcpStream, path: &str) {
     let buf_reader = BufReader::new(&stream);
     let http_request: Vec<String> = buf_reader
         .lines()
@@ -54,7 +57,7 @@ fn handle_connection(stream: TcpStream) {
     if let Some(x) = get_request_regexp.captures(&http_request[0]) {
         let req_url = rem_first(x.get(1).unwrap().as_str());
 
-        let paths = all_paths_walkdir();
+        let paths = all_paths_walkdir(path);
 
         if paths.contains(&String::from(req_url)) {
             handle_exist_file(req_url, stream);
@@ -82,8 +85,8 @@ fn is_hidden(entry: &DirEntry) -> bool {
     file_name.starts_with(".") || entry.file_type().is_dir()
 }
 
-fn all_paths_walkdir() -> Vec<String> {
-    let walker = WalkDir::new("./").into_iter();
+fn all_paths_walkdir(path: &str) -> Vec<String> {
+    let walker = WalkDir::new(path).into_iter();
 
     let mut paths: Vec<String> = Vec::new();
 
