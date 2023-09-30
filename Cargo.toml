@@ -2,8 +2,10 @@
 name = "wse"
 version = "0.1.0"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+authors = ["Ermolaev Ilya"]
+description = "Simple web-server. Exec wse in directory and all files are distributed on localhost"
+repository = "https://github.com/ErmolaevID/wse"
+license = "MIT"
 
 [dependencies]
 clap = { version = "4.3.19", features = ["derive"] }
