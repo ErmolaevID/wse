@@ -1,6 +1,13 @@
 # wse
 Simple web-server. Exec wse in directory and all files are serve on localhost
 
+## Install
+Only MacOS
+```
+brew tap ErmolaevID/wse
+brew install wse
+```
+
 ## Usage
 ```
 wse 
